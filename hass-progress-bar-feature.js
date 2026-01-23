@@ -16,6 +16,15 @@ class ProgressBarFeature extends LitElement {
   static getStubConfig() {
     return {
       type: "custom:progress-bar-feature",
+      // show_value: true,
+      // show_name: true,
+      // name: "Fortschritt",
+      // value: { entity: "sensor.xyz" }, // optional override
+      // text_position: "center", // "left" | "center" | "right"
+      // text_color: "--text-primary-color",
+      // text_shadow: "0 1px 2px rgba(0,0,0,.35)",
+      // text_size: "12px",
+      // format: { suffix: "%", decimals: 0 },
     };
   }
 
@@ -46,7 +55,7 @@ class ProgressBarFeature extends LitElement {
   }
 
   static resolveCssVars(value) {
-    return value.startsWith('--') ? `var(${value})` : value;
+    return value?.startsWith?.('--') ? `var(${value})` : value;
   }
   
   static resolveColor(color, progress) {
@@ -142,7 +151,6 @@ class ProgressBarFeature extends LitElement {
       progress = ProgressBarFeature.resolveTimeProgress(time, states, stateObj);
     
     } else {
-      // ProgressBarFeature.error('Must pass entity, attribute, time, or template');
       ProgressBarFeature.error('Must pass entity or attribute');
     }
 
@@ -157,6 +165,55 @@ class ProgressBarFeature extends LitElement {
     }
 
     return Math.round(inverse ? 100 - progress : progress);
+  }
+
+  // NEW: format the displayed value
+  static formatValue(raw, config) {
+    const fmt = config?.format || {};
+    const decimals = Number.isFinite(fmt.decimals) ? fmt.decimals : undefined;
+    const prefix = fmt.prefix ?? '';
+    const suffix = fmt.suffix ?? '%';
+
+    // If raw is numeric, format it; else return as-is
+    const num = Number(raw);
+    const val = Number.isFinite(num)
+      ? (decimals === undefined ? `${num}` : num.toFixed(decimals))
+      : `${raw ?? ''}`;
+
+    return `${prefix}${val}${suffix}`;
+  }
+
+  // NEW: resolve what text to show (name + value)
+  static resolveDisplayText(config, stateObj, states, progress) {
+    const showName = config.show_name ?? false;
+    const showValue = config.show_value ?? false;
+
+    if (!showName && !showValue) return '';
+
+    // label
+    const name = config.name ?? stateObj?.attributes?.friendly_name ?? '';
+
+    // value source:
+    // - if config.value is provided, use that (entity/attribute/template)
+    // - otherwise show the same progress value
+    let rawValue = progress;
+
+    if (config.value) {
+      const v = config.value;
+      if (v.attribute || v.entity) {
+        rawValue = ProgressBarFeature.readEntityOrAttribute(v.attribute || v.entity, states, stateObj);
+      } else if (v.template !== undefined) {
+        rawValue = ProgressBarFeature.resolveTemplate(v.template);
+      } else {
+        ProgressBarFeature.warn('config.value must define entity/attribute or template');
+      }
+    }
+
+    const valueStr = ProgressBarFeature.formatValue(rawValue, config);
+
+    if (showName && showValue) return `${name}: ${valueStr}`;
+    if (showName) return `${name}`;
+    return `${valueStr}`;
   }
 
   static getPosition(position, size) {
@@ -223,6 +280,13 @@ class ProgressBarFeature extends LitElement {
     const size = ProgressBarFeature.resolveSize(this.config);
     const position = ProgressBarFeature.getPosition(this.config.position, size);
 
+    // NEW: text
+    const text = ProgressBarFeature.resolveDisplayText(this.config, this.stateObj, this.hass?.states, progress);
+    const textPosition = (this.config.text_position || 'center').toLowerCase();
+    const textColor = ProgressBarFeature.resolveCssVars(this.config.text_color || '--text-primary-color');
+    const textShadow = this.config.text_shadow ?? '0 1px 2px rgba(0,0,0,.35)';
+    const textSize = ProgressBarFeature.resolveCssVars(this.config.text_size || '12px');
+
     if(this.config.position) {
       ProgressBarFeature.fixCardStyles(this);
     }
@@ -238,9 +302,18 @@ class ProgressBarFeature extends LitElement {
           --progress-bar-color-bg: ${colorBg};
           --progress-bar-width: ${progress}%;
           --progress-bar-size: ${size};
+          --progress-bar-text-color: ${textColor};
+          --progress-bar-text-shadow: ${textShadow};
+          --progress-bar-text-size: ${textSize};
           ${position}
         "
-      ></div>
+      >
+        ${text ? html`
+          <div class="progress-text progress-text-${textPosition}">
+            ${text}
+          </div>
+        ` : ''}
+      </div>
     `;
   }
 
@@ -274,6 +347,28 @@ class ProgressBarFeature extends LitElement {
         background-color: var(--progress-bar-color);
         width: var(--progress-bar-width);
       }
+
+      /* NEW: overlay text inside the bar */
+      .progress-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        pointer-events: none;
+        user-select: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--progress-bar-text-color);
+        text-shadow: var(--progress-bar-text-shadow);
+        font-size: var(--progress-bar-text-size);
+        line-height: 1;
+      }
+
+      .progress-text-left { justify-content: flex-start; }
+      .progress-text-center { justify-content: center; }
+      .progress-text-right { justify-content: flex-end; }
     `;
   }
 }
