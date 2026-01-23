@@ -317,60 +317,68 @@ class ProgressBarFeature extends LitElement {
     `;
   }
 
-  static get styles() {
-    return css`
-      .progress-bar {
-        position: relative;
-        height: var(--progress-bar-size);
-      }
+static get styles() {
+  return css`
+    .progress-bar {
+      position: relative;
+      height: var(--progress-bar-size);
+      /* wichtig: eigener Stacking-Context */
+      z-index: 0;
+    }
 
-      .progress-bar-anchored {
-        position: absolute;
-        left: 0;
-        width: 100%;
-      }
+    .progress-bar-anchored {
+      position: absolute;
+      left: 0;
+      width: 100%;
+    }
 
-      .progress-bar::before,
-      .progress-bar::after {
-        content: '';
-        position: absolute;
-        width: 100%;
-        height: var(--progress-bar-size);        
-        border-radius: var(--feature-border-radius, 12px);
-      }
-      
-      .progress-bar::before {
-        background-color: var(--progress-bar-color-bg);
-      }
-      
-      .progress-bar::after {
-        background-color: var(--progress-bar-color);
-        width: var(--progress-bar-width);
-      }
+    .progress-bar::before,
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      inset: 0; /* statt width/height einzeln */
+      height: var(--progress-bar-size);
+      border-radius: var(--feature-border-radius, 12px);
+    }
 
-      /* NEW: overlay text inside the bar */
-      .progress-text {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        padding: 0 8px;
-        pointer-events: none;
-        user-select: none;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--progress-bar-text-color);
-        text-shadow: var(--progress-bar-text-shadow);
-        font-size: var(--progress-bar-text-size);
-        line-height: 1;
-      }
+    /* Background */
+    .progress-bar::before {
+      background-color: var(--progress-bar-color-bg);
+      z-index: 0;
+    }
 
-      .progress-text-left { justify-content: flex-start; }
-      .progress-text-center { justify-content: center; }
-      .progress-text-right { justify-content: flex-end; }
-    `;
-  }
+    /* Bar */
+    .progress-bar::after {
+      background-color: var(--progress-bar-color);
+      width: var(--progress-bar-width);
+      z-index: 1;
+    }
+
+    /* text and value always in front */
+    .progress-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      pointer-events: none;
+      user-select: none;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--progress-bar-text-color);
+      text-shadow: var(--progress-bar-text-shadow);
+      font-size: var(--progress-bar-text-size);
+      line-height: 1;
+      z-index: 2;
+    }
+
+    .progress-text-left { justify-content: flex-start; }
+    .progress-text-center { justify-content: center; }
+    .progress-text-right { justify-content: flex-end; }
+  `;
+}
+
 }
 
 customElements.define("progress-bar-feature", ProgressBarFeature);
