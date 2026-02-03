@@ -57,7 +57,7 @@ class ProgressBarFeature extends LitElement {
   static resolveCssVars(value) {
     return value?.startsWith?.('--') ? `var(${value})` : value;
   }
-  
+
   static resolveColor(color, progress) {
     if (color === 'meter') {
       // We multiply by 1.2 to make the green a little more vibrant at 100%
@@ -100,7 +100,7 @@ class ProgressBarFeature extends LitElement {
         );
         return;
       }
-      
+
       const initial = ProgressBarFeature.parseTimeString(initial_value);
       const remaining = ProgressBarFeature.parseTimeString(remaining_value);
       const elapsed = initial - remaining;
@@ -143,13 +143,13 @@ class ProgressBarFeature extends LitElement {
 
     if (attribute || entity) {
       progress = ProgressBarFeature.readEntityOrAttribute(attribute || entity, states, stateObj);
-    
+
     } else if (template) {
       progress = ProgressBarFeature.resolveTemplate(template);
 
     } else if (time) {
       progress = ProgressBarFeature.resolveTimeProgress(time, states, stateObj);
-    
+
     } else {
       ProgressBarFeature.error('Must pass entity or attribute');
     }
@@ -308,6 +308,9 @@ class ProgressBarFeature extends LitElement {
           ${position}
         "
       >
+        <div class="bar-bg"></div>
+        <div class="bar-fill"></div>
+        
         ${text ? html`
           <div class="progress-text progress-text-${textPosition}">
             ${text}
@@ -317,68 +320,86 @@ class ProgressBarFeature extends LitElement {
     `;
   }
 
-static get styles() {
-  return css`
-    .progress-bar {
-      position: relative;
-      height: var(--progress-bar-size);
-      /* wichtig: eigener Stacking-Context */
-      z-index: 0;
-    }
+  static get styles() {
+    return css`
+      .progress-bar {
+        position: relative;
+        height: var(--progress-bar-size);
+      /* erzwingt sauberen stacking context */
+        isolation: isolate;
+      }
 
-    .progress-bar-anchored {
-      position: absolute;
-      left: 0;
-      width: 100%;
-    }
+      .progress-bar-anchored {
+        position: absolute;
+        left: 0;
+        width: 100%;
+      }
 
-    .progress-bar::before,
-    .progress-bar::after {
-      content: '';
-      position: absolute;
-      inset: 0; /* statt width/height einzeln */
-      height: var(--progress-bar-size);
-      border-radius: var(--feature-border-radius, 12px);
-    }
+      .bar-bg,
+      .bar-fill {
+        position: absolute;
+        inset: 0;
+        height: var(--progress-bar-size);
+        border-radius: var(--feature-border-radius, 12px);
+      }
 
-    /* Background */
-    .progress-bar::before {
-      background-color: var(--progress-bar-color-bg);
-      z-index: 0;
-    }
+      .bar-bg {
+        background-color: var(--progress-bar-color-bg);
+        z-index: 0;
+      }
 
-    /* Bar */
-    .progress-bar::after {
-      background-color: var(--progress-bar-color);
-      width: var(--progress-bar-width);
-      z-index: 1;
-    }
+      .bar-fill {
+        background-color: var(--progress-bar-color);
+        width: var(--progress-bar-width);
+        z-index: 1;
+      }
 
-    /* text and value always in front */
-    .progress-text {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      align-items: center;
-      padding: 0 8px;
-      pointer-events: none;
-      user-select: none;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      color: var(--progress-bar-text-color);
-      text-shadow: var(--progress-bar-text-shadow);
-      font-size: var(--progress-bar-text-size);
-      line-height: 1;
-      z-index: 2;
-    }
+      .progress-bar::before,
+      .progress-bar::after {
+        content: '';
+        position: absolute;
+        inset: 0; /* width/height extra */
+       /*  width: 100%; */
+        height: var(--progress-bar-size);
+        border-radius: var(--feature-border-radius, 12px);
+      }
+      /* Background */
+      .progress-bar::before {
+        background-color: var(--progress-bar-color-bg);
+        z-index: 0;
+      }
 
-    .progress-text-left { justify-content: flex-start; }
-    .progress-text-center { justify-content: center; }
-    .progress-text-right { justify-content: flex-end; }
-  `;
-}
+      .progress-bar::after {
+        background-color: var(--progress-bar-color);
+        width: var(--progress-bar-width);
+        z-index: 1;
+      }
 
+      /* NEW: overlay text inside the bar */
+      /* Text always above */
+      .progress-text {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        pointer-events: none;
+        user-select: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        color: var(--progress-bar-text-color);
+        text-shadow: var(--progress-bar-text-shadow);
+        font-size: var(--progress-bar-text-size);
+        line-height: 1;
+        z-index: 2;
+      }
+
+      .progress-text-left { justify-content: flex-start; }
+      .progress-text-center { justify-content: center; }
+      .progress-text-right { justify-content: flex-end; }
+    `;
+  }
 }
 
 customElements.define("progress-bar-feature", ProgressBarFeature);
